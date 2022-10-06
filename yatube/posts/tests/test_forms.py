@@ -71,7 +71,7 @@ class PostFormTests(TestCase):
             reverse('posts:post_create'),
             data=form_data,
             follow=True)
-        post = Post.objects.last(text='Тест текст')
+        post = Post.objects.get(text='Тест текст')
         self.assertEqual(
             Post.objects.count(), posts_count + 1
         )
@@ -101,7 +101,7 @@ class PostFormTests(TestCase):
         self.assertRedirects(response, reverse(
             'posts:post_detail', args=(self.post.id,)))
         self.assertEqual(Post.objects.count(), post_count)
-        post = Post.objects.last(text='Обновленный текст')
+        post = Post.objects.get(text='Обновленный текст')
         self.assertEqual(
             post.text, form_data['text']
         )
