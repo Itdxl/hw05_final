@@ -1,9 +1,10 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
-from posts.models import Follow, Group, Post
+from posts.models import Comment, Follow, Group, Post
 
 
 User = get_user_model()
@@ -28,6 +29,24 @@ class GroupViewsTests(TestCase):
             text='Тестовый пост',
             group=cls.group,
         )
+        cls.small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        cls.image = SimpleUploadedFile(
+            name='small.gif',
+            content=cls.small_gif,
+            content_type='image/gif'
+        )
+        cls.comments = Comment.objects.create(
+            text='Текст',
+            author=cls.user,
+            post=cls.post
+        )
 
         cls.templates_pages_names = {
             'posts/index.html': reverse('posts:mane_page'),
@@ -44,6 +63,9 @@ class GroupViewsTests(TestCase):
             ),
             'posts/group_list.html': (
                 reverse('posts:groups', kwargs={'slug': 'test-slug'})
+            ),
+            'posts/follow.html': (
+                reverse('posts:follow_index')
             ),
         }
 
@@ -145,7 +167,7 @@ class GroupViewsTests(TestCase):
             self.post, response.context['page_obj']
         )
 
-    def test_post_contain_in_mane_page(self):
+    def test_post_contain_in_main_page(self):
         """Пост  попал на главную"""
         reverse_name = reverse(
             'posts:mane_page'
@@ -208,6 +230,31 @@ class GroupViewsTests(TestCase):
         response = self.follower_client.get(reverse('posts:follow_index'))
         self.assertTrue(count_post_follower)
         self.assertFalse(len(response.context['page_obj']))
+
+    def test_follower_impossible_twice(self):
+        """Проверка на невозможность подписаться дважды на одного и того же."""
+        response = self.follower_client.get(reverse('posts:follow_index'))
+        count_post_follower = len(response.context['page_obj'])
+        response = self.follower_client.get(
+            reverse('posts:profile_follow', kwargs={'username': self.user}))
+        response = self.follower_client.get(reverse('posts:follow_index'))
+        self.assertTrue(len(response.context['page_obj']), count_post_follower)
+
+    def test_following_impossible_for_author_himself(self):
+        """Не досупна подписка автору на самого себя."""
+        follow_count = Follow.objects.count()
+        self.author.post(
+            reverse(
+                "posts:profile_follow",
+                kwargs={'username': self.user_author},))
+        self.assertEqual(
+            Follow.objects.count(),
+            follow_count,
+            'кол-во записей не равно, подписка на самого себя возможна')
+        self.assertFalse(
+            Follow.objects.filter(author=self.user_author,
+                                  user=self.user_author).exists(),
+            'Нельзя подписаться на самого себя')
 
 
 class PaginatorViewsTest(TestCase):

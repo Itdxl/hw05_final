@@ -2,7 +2,6 @@ import shutil
 import tempfile
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.test import Client, TestCase, override_settings
@@ -49,7 +48,6 @@ class PostFormTests(TestCase):
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
-        self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
@@ -153,10 +151,9 @@ class PostFormTests(TestCase):
         )
         self.assertEqual(response.status_code, HTTPStatus.OK)
         comment = Comment.objects.first()
-        comment_text = comment.text
-        self.assertEqual(comment_text, form_data['text'])
+        self.assertEqual(comment.text, form_data['text'])
 
-    def test_add_comment_client(self):
+    def test_guest_cant_comment(self):
         """guest cant """
         comment_count = Comment.objects.count()
         response = self.client.post(
@@ -168,3 +165,25 @@ class PostFormTests(TestCase):
         self.assertRedirects(
             response, f'/auth/login/?next=/posts/{self.post.id}/comment/')
         self.assertEqual(Comment.objects.count(), comment_count)
+
+    def test_create_comment(self):
+        """Проверка создания коммента"""
+        form_data = {
+            'text': 'Тест комментария',
+            'author': self.user,
+        }
+        comments_count = Comment.objects.count()
+        self.authorized_client.post(
+            reverse('posts:add_comment', kwargs={'post_id': self.post.id}),
+            data=form_data,
+            follow=True)
+        comment = Comment.objects.get(text='Тест комментария')
+        self.assertEqual(
+            Comment.objects.count(), comments_count + 1
+        )
+        self.assertEqual(
+            comment.text, form_data['text']
+        )
+        self.assertEqual(
+            comment.author, form_data['author']
+        )

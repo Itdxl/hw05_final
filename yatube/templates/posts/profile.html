@@ -4,7 +4,7 @@
   {% endblock %}
 {% block content %}
   <h3>Все посты пользователя {{ author.get_full_name }}</h3>
-  <h3>Всего пстов: {{ posts_count }}</h3>
+  <h3>Всего постов: {{ author.posts.count }}</h3>
   {% if author != request.user %}
     {% if following %}
       <a

@@ -35,6 +35,7 @@ class PostURLTests(TestCase):
         cls.private_pages_list = [
             ('/create/', 'posts/create_post.html'),
             (f'/posts/{cls.post.id}/edit/', 'posts/create_post.html'),
+            ('/follow/', 'posts/follow.html'),
         ]
 
     def setUp(self):
