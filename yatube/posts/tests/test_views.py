@@ -29,11 +29,6 @@ class GroupViewsTests(TestCase):
             text='Тестовый пост',
             group=cls.group,
         )
-        cls.post2 = Post.objects.create(
-            author=cls.user,
-            text='Тестовый пост2',
-            group=cls.group,
-        )
 
         cls.small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
