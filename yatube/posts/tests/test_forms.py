@@ -25,14 +25,6 @@ class PostFormTests(TestCase):
             title='Тестовое название',
             slug='test-slug',
         )
-
-        cls.post = Post.objects.create(
-            author=cls.user,
-            text='Тестовый текст',
-            group=cls.group,
-        )
-        cls.form = PostForm()
-
         cls.small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -41,6 +33,18 @@ class PostFormTests(TestCase):
             b'\x02\x00\x01\x00\x00\x02\x02\x0C'
             b'\x0A\x00\x3B'
         )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=cls.small_gif,
+            content_type='image/gif'
+        )
+        cls.post = Post.objects.create(
+            author=cls.user,
+            text='Тестовый текст',
+            group=cls.group,
+            image=cls.uploaded,
+        )
+        cls.form = PostForm()
 
     @classmethod
     def tearDownClass(cls):
@@ -59,7 +63,7 @@ class PostFormTests(TestCase):
             content_type='image/gif'
         )
         form_data = {
-            'text': 'Тест текст',
+            'text': 'Тестовый текст',
             'group': self.group.id,
             'author': self.user,
             'image': uploaded,
@@ -69,7 +73,7 @@ class PostFormTests(TestCase):
             reverse('posts:post_create'),
             data=form_data,
             follow=True)
-        post = Post.objects.get(text='Тест текст')
+        post = Post.objects.latest('-pub_date')
         self.assertEqual(
             Post.objects.count(), posts_count + 1
         )
@@ -99,7 +103,7 @@ class PostFormTests(TestCase):
         self.assertRedirects(response, reverse(
             'posts:post_detail', args=(self.post.id,)))
         self.assertEqual(Post.objects.count(), post_count)
-        post = Post.objects.get(text='Обновленный текст')
+        post = Post.objects.get(id=self.post.id)
         self.assertEqual(
             post.text, form_data['text']
         )
@@ -165,25 +169,3 @@ class PostFormTests(TestCase):
         self.assertRedirects(
             response, f'/auth/login/?next=/posts/{self.post.id}/comment/')
         self.assertEqual(Comment.objects.count(), comment_count)
-
-    def test_create_comment(self):
-        """Проверка создания коммента"""
-        form_data = {
-            'text': 'Тест комментария',
-            'author': self.user,
-        }
-        comments_count = Comment.objects.count()
-        self.authorized_client.post(
-            reverse('posts:add_comment', kwargs={'post_id': self.post.id}),
-            data=form_data,
-            follow=True)
-        comment = Comment.objects.get(text='Тест комментария')
-        self.assertEqual(
-            Comment.objects.count(), comments_count + 1
-        )
-        self.assertEqual(
-            comment.text, form_data['text']
-        )
-        self.assertEqual(
-            comment.author, form_data['author']
-        )

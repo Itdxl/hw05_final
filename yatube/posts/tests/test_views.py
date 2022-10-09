@@ -29,6 +29,12 @@ class GroupViewsTests(TestCase):
             text='Тестовый пост',
             group=cls.group,
         )
+        cls.post2 = Post.objects.create(
+            author=cls.user,
+            text='Тестовый пост2',
+            group=cls.group,
+        )
+
         cls.small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -255,6 +261,32 @@ class GroupViewsTests(TestCase):
             Follow.objects.filter(author=self.user_author,
                                   user=self.user_author).exists(),
             'Нельзя подписаться на самого себя')
+
+    def test_comment_on_page_with_right_content(self):
+        """комментарий появляется на странице с правильным контекстом."""
+        comment_count = Comment.objects.count()
+        form_data = {
+            'author': self.user,
+            'text': 'Текст',
+            'post': self.post,
+        }
+        response = self.authorized_client.post(
+            reverse(
+                'posts:add_comment', args=(self.post.id,)
+            ),
+            data=form_data,
+            follow=True
+        )
+        self.assertEqual(Comment.objects.count(), comment_count + 1)
+        self.assertRedirects(response, reverse(
+            'posts:post_detail',
+            args=(self.post.id,)
+        ))
+        self.assertTrue(
+            Comment.objects.filter(
+                text=form_data['text']
+            ).exists()
+        )
 
 
 class PaginatorViewsTest(TestCase):
